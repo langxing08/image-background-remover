@@ -16,6 +16,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("multipart/form-data")) {
+      return NextResponse.json(
+        { error: "Please upload an image." },
+        { status: 400 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("image_file");
 
