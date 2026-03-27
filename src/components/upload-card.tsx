@@ -53,11 +53,11 @@ function ImageIcon() {
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="max-w-[220px] text-center">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-[#9473b2]">
         <ImageIcon />
       </div>
       <p className="mt-3 text-sm font-semibold text-slate-700">{title}</p>
-      <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
+      <p className="mt-1.5 text-sm leading-6 text-[#9473b2]">{description}</p>
     </div>
   );
 }
@@ -147,13 +147,13 @@ export function UploadCard() {
   };
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-      <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
+    <section className="overflow-hidden rounded-[28px] border border-[rgba(223,191,255,0.52)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(255,244,253,1)_100%)] shadow-[0_28px_82px_rgba(196,147,255,0.32)]">
+      <div className="border-b border-[rgba(223,191,255,0.40)] px-4 py-3 sm:px-5">
         <div>
-          <h2 className="text-[15px] font-semibold tracking-[-0.025em] text-slate-950 sm:text-[17px]">
+          <h2 className="text-[15px] font-semibold tracking-[-0.025em] text-[#623f77] sm:text-[17px]">
             Upload image
           </h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-[13px]">
+          <p className="mt-1 text-xs leading-5 text-[#9473b2] sm:text-[13px]">
             Preview the original and export a transparent PNG.
           </p>
         </div>
@@ -170,28 +170,28 @@ export function UploadCard() {
           onDrop={onDrop}
           className={`flex min-h-[360px] flex-col rounded-[24px] border-2 px-5 py-6 text-center transition lg:min-h-[420px] ${
             dragActive
-              ? "border-blue-300 bg-blue-50/70 shadow-[0_16px_40px_rgba(37,99,235,0.10)]"
-              : "border-slate-200 bg-slate-50/60"
-          } ${isBusy ? "cursor-not-allowed" : "cursor-pointer hover:border-blue-200 hover:bg-blue-50/40"}`}
+              ? "border-[rgba(255,151,197,0.76)] bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(255,219,237,1)_100%)] shadow-[0_24px_56px_rgba(255,160,200,0.40)]"
+              : "border-[rgba(183,216,255,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(245,249,255,0.84)_100%)]"
+          } ${isBusy ? "cursor-not-allowed" : "cursor-pointer hover:border-[rgba(255,144,194,0.82)] hover:bg-[rgba(255,228,242,1)]"}`}
         >
           <div className="flex flex-1 flex-col items-center justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-[#9473b2]">
               <UploadIcon />
             </div>
 
-            <p className="mt-4 text-[22px] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[24px]">
+            <p className="mt-4 text-[22px] font-semibold tracking-[-0.035em] text-[#623f77] sm:text-[24px]">
               {isBusy ? "Processing image..." : "Choose an image"}
             </p>
-            <p className="mt-2 max-w-[240px] text-sm leading-6 text-slate-600">
+            <p className="mt-2 max-w-[240px] text-sm leading-6 text-[#6e627d]">
               Drag and drop here, or click to upload your image.
             </p>
 
             <span
               aria-disabled={isBusy}
-              className={`mt-5 inline-flex min-h-11 min-w-[176px] items-center justify-center rounded-full px-5 text-sm font-semibold shadow-[0_6px_18px_rgba(37,99,235,0.16)] transition ${
+              className={`mt-5 inline-flex min-h-11 min-w-[176px] items-center justify-center rounded-full px-5 text-sm font-semibold shadow-[0_20px_34px_rgba(184,131,255,0.46)] transition ${
                 isBusy
-                  ? "cursor-not-allowed bg-slate-300 text-slate-600 shadow-none"
-                  : "cursor-pointer bg-blue-600 text-white hover:bg-blue-700"
+                  ? "cursor-not-allowed bg-slate-300 text-[#6e627d] shadow-none"
+                  : "cursor-pointer bg-[linear-gradient(135deg,#ebb2ff_0%,#c39fff_100%)] text-white hover:brightness-105"
               }`}
             >
               {isBusy ? "Processing..." : "Upload image"}
@@ -201,7 +201,7 @@ export function UploadCard() {
               <a
                 href={resultUrl}
                 download="removed-background.png"
-                className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full border border-[rgba(255,154,194,0.74)] bg-[linear-gradient(180deg,rgba(255,232,243,1)_0%,rgba(255,214,231,1)_100%)] px-4 py-2 text-sm font-semibold text-[#db4e91] transition hover:brightness-105"
               >
                 Download PNG
               </a>
@@ -217,16 +217,16 @@ export function UploadCard() {
             />
           </div>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs text-slate-500">
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">JPG / PNG / WEBP · Up to 10MB</span>
+          <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs text-[#9473b2]">
+            <span className="rounded-full border border-[rgba(223,191,255,0.44)] bg-[rgba(255,255,255,0.98)] px-3 py-1.5">JPG / PNG / WEBP · Up to 10MB</span>
           </div>
         </label>
 
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/60 p-3">
-          <div className="mb-2 px-1 text-[10px] font-medium tracking-[0.01em] text-slate-400">
+        <div className="rounded-[24px] border border-[rgba(183,216,255,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(245,249,255,0.84)_100%)] p-3">
+          <div className="mb-2 px-1 text-[10px] font-medium tracking-[0.01em] text-[#b79fce]">
             Original image
           </div>
-          <div className="checkerboard flex min-h-[360px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 lg:min-h-[420px]">
+          <div className="checkerboard flex min-h-[360px] items-center justify-center overflow-hidden rounded-[20px] border border-[rgba(198,179,243,0.28)] bg-[rgba(255,255,255,0.84)] p-3 lg:min-h-[420px]">
             {originalUrl ? (
               <Image
                 src={originalUrl}
@@ -241,17 +241,17 @@ export function UploadCard() {
             )}
           </div>
           {file ? (
-            <div className="mt-2 truncate px-1 text-xs text-slate-500" title={file.name}>
+            <div className="mt-2 truncate px-1 text-xs text-[#9473b2]" title={file.name}>
               {file.name}
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/60 p-3">
-          <div className="mb-2 px-1 text-[10px] font-medium tracking-[0.01em] text-slate-400">
+        <div className="rounded-[24px] border border-[rgba(183,216,255,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(245,249,255,0.84)_100%)] p-3">
+          <div className="mb-2 px-1 text-[10px] font-medium tracking-[0.01em] text-[#b79fce]">
             Transparent PNG
           </div>
-          <div className="checkerboard flex min-h-[360px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 lg:min-h-[420px]">
+          <div className="checkerboard flex min-h-[360px] items-center justify-center overflow-hidden rounded-[20px] border border-[rgba(198,179,243,0.28)] bg-[rgba(255,255,255,0.84)] p-3 lg:min-h-[420px]">
             {resultUrl ? (
               <Image
                 src={resultUrl}
@@ -279,7 +279,7 @@ export function UploadCard() {
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : state === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-slate-200 bg-slate-50 text-slate-600"
+                : "border-[rgba(194,178,232,0.22)] bg-slate-50 text-[#6e627d]"
           }`}
         >
           {helperText}
