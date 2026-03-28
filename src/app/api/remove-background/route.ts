@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ACCEPTET_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_SIZE = 10 * 1024 * 1024;
-
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
