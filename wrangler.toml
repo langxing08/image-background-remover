@@ -1,7 +1,5 @@
 name = "image-background-remover"
 compatibility_date = "2024-01-01"
-
-# 静态导出的输出目录（由 next build --output: export 生成）
 pages_build_output_dir = "out"
 
 [vars]

@@ -21,18 +21,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Enable static export for Cloudflare Pages
-        run: |
-          node -e "
-          const fs = require('fs');
-          const config = fs.readFileSync('next.config.ts', 'utf8');
-          const modified = config.replace(
-            'const nextConfig: NextConfig = {',
-            'const nextConfig: NextConfig = { output: \"export\", images: { unoptimized: true },'
-          );
-          fs.writeFileSync('next.config.ts', modified);
-          "
-
       - name: Build
         run: npm run build
         env:
@@ -44,10 +32,7 @@ jobs:
           cp -r functions/* out/functions/
 
       - name: Deploy to Cloudflare Pages
-        run: |
-          npx wrangler pages deploy out \
-            --project-name=image-background-remover \
-            --branch=main
+        run: npx wrangler pages deploy out --project-name=image-background-remover --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
