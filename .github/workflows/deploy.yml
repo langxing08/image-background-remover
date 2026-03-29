@@ -31,10 +31,9 @@ jobs:
             'const nextConfig: NextConfig = { output: \"export\", images: { unoptimized: true },'
           );
           fs.writeFileSync('next.config.ts', modified);
-          console.log('Updated next.config.ts for static export');
           "
 
-      - name: Build Next.js
+      - name: Build
         run: npm run build
         env:
           REMOVE_BG_API_KEY: ${{ secrets.REMOVE_BG_API_KEY }}
