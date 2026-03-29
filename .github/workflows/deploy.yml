@@ -1,0 +1,54 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Enable static export for Cloudflare Pages
+        run: |
+          node -e "
+          const fs = require('fs');
+          const config = fs.readFileSync('next.config.ts', 'utf8');
+          const modified = config.replace(
+            'const nextConfig: NextConfig = {',
+            'const nextConfig: NextConfig = { output: \"export\", images: { unoptimized: true },'
+          );
+          fs.writeFileSync('next.config.ts', modified);
+          console.log('Updated next.config.ts for static export');
+          "
+
+      - name: Build Next.js
+        run: npm run build
+        env:
+          REMOVE_BG_API_KEY: ${{ secrets.REMOVE_BG_API_KEY }}
+
+      - name: Copy Functions to output
+        run: |
+          mkdir -p out/functions
+          cp -r functions/* out/functions/
+
+      - name: Deploy to Cloudflare Pages
+        run: |
+          npx wrangler pages deploy out \
+            --project-name=image-background-remover \
+            --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
