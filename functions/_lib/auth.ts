@@ -190,6 +190,16 @@ export async function getUsageCountForToday(context: AppContext, userId: string)
   return row?.usageCount ?? 0;
 }
 
+export async function getTotalFreeUsageCount(context: AppContext, userId: string): Promise<number> {
+  const row = await context.env.DB.prepare(
+    "SELECT COALESCE(SUM(usage_count), 0) as usageCount FROM daily_usage WHERE user_id = ?"
+  )
+    .bind(userId)
+    .first<{ usageCount: number }>();
+
+  return row?.usageCount ?? 0;
+}
+
 export async function incrementUsageForToday(context: AppContext, userId: string): Promise<number> {
   const usageDate = getTodayDateString();
   const current = await getUsageCountForToday(context, userId);
@@ -202,17 +212,16 @@ export async function incrementUsageForToday(context: AppContext, userId: string
     )
       .bind(userId, usageDate)
       .run();
-    return current + 1;
+  } else {
+    await context.env.DB.prepare(
+      `INSERT INTO daily_usage (user_id, usage_date, usage_count)
+       VALUES (?, ?, 1)`
+    )
+      .bind(userId, usageDate)
+      .run();
   }
 
-  await context.env.DB.prepare(
-    `INSERT INTO daily_usage (user_id, usage_date, usage_count)
-     VALUES (?, ?, 1)`
-  )
-    .bind(userId, usageDate)
-    .run();
-
-  return 1;
+  return getTotalFreeUsageCount(context, userId);
 }
 
 export async function getRemainingCredits(context: AppContext, userId: string): Promise<{ used: number; remaining: number; limit: number; planCode?: string }> {
@@ -258,7 +267,7 @@ export async function getRemainingCredits(context: AppContext, userId: string): 
   }
 
   const limit = getFreeDailyCredits(context.env);
-  const used = await getUsageCountForToday(context, userId);
+  const used = await getTotalFreeUsageCount(context, userId);
   return {
     used,
     remaining: Math.max(limit - used, 0),

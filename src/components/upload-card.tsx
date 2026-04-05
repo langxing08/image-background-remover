@@ -42,11 +42,12 @@ type SubscriptionCenterResponse = {
   };
   usage: {
     usageMonth: string;
-    planCode: PlanCode;
+    planCode: PlanCode | null;
     quotaTotal: number;
     quotaUsed: number;
     quotaRemaining: number;
-    resetAt: string;
+    resetAt: string | null;
+    mode: "subscription" | "free";
   } | null;
   plans: {
     planCode: PlanCode;
@@ -380,61 +381,104 @@ function SubscriptionCenterCard({
         <p className="mt-1 text-sm text-slate-600">当前套餐、月额度、切换订阅、支付记录。</p>
       </div>
 
-      <div className="grid gap-4 p-4 lg:grid-cols-[1.2fr_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#fff8fe_100%)] p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-4 p-4">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#fff8fe_100%)] p-5">
+            <div className="flex h-full flex-col justify-between gap-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#a67cc0]">当前套餐</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{center?.currentSubscription.status === "active" ? formatPlanName(center?.currentSubscription.planCode || undefined) : "未开通"}</p>
-                <p className="mt-1 text-sm text-slate-600">状态：{center?.currentSubscription.status === "active" ? "生效中" : "未订阅"}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-slate-900">
+                  {center?.currentSubscription.status === "active" ? formatPlanName(center?.currentSubscription.planCode || undefined) : "未开通"}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">状态：{center?.currentSubscription.status === "active" ? "生效中" : "未订阅"}</p>
               </div>
-              <div className="rounded-2xl bg-[#faf3ff] px-3 py-2 text-right text-xs text-[#865f95]">
-                <div>开始：{formatDateTime(center?.currentSubscription.startedAt)}</div>
-                <div className="mt-1">到期：{formatDateTime(center?.currentSubscription.expiresAt)}</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-[#faf3ff] px-4 py-3 text-xs text-[#865f95]">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-[#b08ac7]">开始时间</div>
+                  <div className="mt-2 text-sm font-medium text-slate-700">{formatDateTime(center?.currentSubscription.startedAt)}</div>
+                </div>
+                <div className="rounded-2xl bg-[#faf3ff] px-4 py-3 text-xs text-[#865f95]">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-[#b08ac7]">到期时间</div>
+                  <div className="mt-2 text-sm font-medium text-slate-700">{formatDateTime(center?.currentSubscription.expiresAt)}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#f7fbff_100%)] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#a67cc0]">本月使用情况</p>
-                <p className="mt-2 text-sm text-slate-600">已用 {center?.usage?.quotaUsed ?? 0} / {center?.usage?.quotaTotal ?? 0}</p>
+          <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#f7fbff_100%)] p-5">
+            <div className="flex h-full flex-col justify-between gap-4">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#a67cc0]">
+                    {center?.usage?.mode === "subscription" ? "套餐次数" : "免费次数"}
+                  </p>
+                  <p className="mt-3 text-lg font-semibold text-slate-900">
+                    已用 {center?.usage?.quotaUsed ?? 0} / {center?.usage?.quotaTotal ?? 0}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-[#a67cc0]">剩余</p>
+                  <p className="mt-1 text-2xl font-semibold text-slate-900">{center?.usage?.quotaRemaining ?? 0}</p>
+                </div>
               </div>
-              <div className="text-right text-xs text-[#865f95]">剩余 {center?.usage?.quotaRemaining ?? 0}</div>
+              <div>
+                <div className="h-3 overflow-hidden rounded-full bg-[#f0e6f8]">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#c39fff_0%,#ebb2ff_100%)]"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round((((center?.usage?.quotaUsed ?? 0) / Math.max(center?.usage?.quotaTotal ?? 1, 1)) * 100) || 0)
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  {center?.usage?.mode === "subscription"
+                    ? `重置时间：${formatDateTime(center?.usage?.resetAt)}`
+                    : "登录后可免费使用 3 次，超出后需购买套餐"}
+                </p>
+              </div>
             </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#f0e6f8]">
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#c39fff_0%,#ebb2ff_100%)]"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round((((center?.usage?.quotaUsed ?? 0) / Math.max(center?.usage?.quotaTotal ?? 1, 1)) * 100) || 0)
-                  )}%`,
-                }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-slate-500">重置时间：{formatDateTime(center?.usage?.resetAt)}</p>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#fffafd_100%)] p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#a67cc0]">套餐切换</p>
-          <div className="mt-3 space-y-3">
+        <div className="rounded-3xl border border-[rgba(223,191,255,0.44)] bg-[linear-gradient(180deg,#fff_0%,#fffafd_100%)] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#a67cc0]">套餐切换</p>
+              <p className="mt-1 text-sm text-slate-500">选择适合你的月付套餐</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
             {center?.plans.map((plan) => (
-              <div key={plan.planCode} className={`rounded-2xl border p-4 ${plan.isCurrent ? "border-[#c39fff] bg-[#fcf7ff]" : "border-slate-200 bg-white"}`}>
-                <div className="flex items-start justify-between gap-3">
+              <div
+                key={plan.planCode}
+                className={`flex min-h-[190px] flex-col rounded-[28px] border p-5 transition ${
+                  plan.isCurrent
+                    ? "border-[#c39fff] bg-[#fcf7ff] shadow-[0_12px_30px_rgba(195,159,255,0.16)]"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-semibold text-slate-900">{plan.planName}</p>
+                    <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900">{plan.planName}</p>
+                    <div className="mt-2 flex items-center gap-2">
                       {plan.isRecommended ? <span className="rounded-full bg-[#f2e4ff] px-2 py-0.5 text-[10px] font-semibold text-[#865f95]">推荐</span> : null}
                       {plan.isCurrent ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">当前</span> : null}
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">${plan.priceMonth} / month · {plan.quotaMonth} credits</p>
                   </div>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-3xl font-semibold tracking-[-0.04em] text-slate-900">${plan.priceMonth}</p>
+                  <p className="mt-1 text-sm text-slate-500">/ month · {plan.quotaMonth} credits</p>
+                </div>
+
+                <div className="mt-auto pt-6">
                   {plan.isCurrent ? (
-                    <div className="inline-flex min-h-10 items-center rounded-full bg-slate-100 px-4 text-sm font-semibold text-slate-400">
+                    <div className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-100 px-4 text-sm font-semibold text-slate-400">
                       当前套餐
                     </div>
                   ) : (
@@ -442,7 +486,7 @@ function SubscriptionCenterCard({
                       type="button"
                       disabled={subscribingPlan === plan.planCode}
                       onClick={() => void handleSubscribe(plan.planCode)}
-                      className="inline-flex min-h-10 items-center rounded-full bg-[#fff6d8] px-4 text-sm font-semibold text-[#8a6a00] transition hover:bg-[#ffeea0] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#fff6d8] px-4 text-sm font-semibold text-[#8a6a00] transition hover:bg-[#ffeea0] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {subscribingPlan === plan.planCode ? "处理中…" : "用 PayPal 订阅"}
                     </button>
@@ -451,7 +495,8 @@ function SubscriptionCenterCard({
               </div>
             ))}
           </div>
-          {actionMessage ? <p className="mt-3 text-xs text-[#865f95]">{actionMessage}</p> : null}
+
+          {actionMessage ? <p className="mt-4 text-xs text-[#865f95]">{actionMessage}</p> : null}
         </div>
       </div>
 
@@ -498,14 +543,14 @@ export function UploadCard() {
     if (authStatus === "loading") return "Checking your login status...";
     if (authStatus === "logged_out") return "Sign in with Google to unlock subscription quota.";
     if ((quota?.remaining ?? 0) <= 0) {
-      return subscription?.planCode ? `本月额度已用完，请升级套餐或等待下月重置。` : `免费次数已用完，今天请明天再来，或直接购买套餐。`;
+      return subscription?.planCode ? `套餐次数已用完，请升级套餐或等待下月重置。` : `免费次数已用完，如需继续使用请购买套餐。`;
     }
     if (isBusy) return "Removing background...";
     if (state === "success") return `Done. Your transparent PNG is ready. ${quota?.remaining ?? 0} removals left this month.`;
     if (state === "error") return error;
     return subscription?.planCode
-      ? `当前套餐 ${formatPlanName(subscription?.planCode)}，本月剩余 ${quota?.remaining ?? 0}/${quota?.limit ?? 0} 次。`
-      : `当前未订阅，今日免费剩余 ${quota?.remaining ?? 0}/${quota?.limit ?? 0} 次。`;
+      ? `当前套餐 ${formatPlanName(subscription?.planCode)}，剩余 ${quota?.remaining ?? 0}/${quota?.limit ?? 0} 次套餐次数。`
+      : `当前未订阅，登录后可免费使用 3 次，剩余 ${quota?.remaining ?? 0}/${quota?.limit ?? 0} 次。`;
   }, [authStatus, error, isBusy, quota, state, subscription]);
 
   const validateFile = (nextFile: File) => {

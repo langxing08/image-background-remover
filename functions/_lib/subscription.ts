@@ -1,4 +1,4 @@
-import type { AppContext, Env } from "./auth";
+import { getRemainingCredits, type AppContext, type Env } from "./auth";
 
 export type PlanCode = "trial" | "standard" | "premium";
 export type SubscriptionStatus = "inactive" | "active" | "expired" | "canceled";
@@ -317,28 +317,31 @@ export async function getSubscriptionCenter(context: AppContext, userId: string)
   if (!user) throw new Error("USER_NOT_FOUND");
 
   const plans = await getEnabledPlans(context);
+  const quota = await getRemainingCredits(context, userId);
   const usageMonth = getCurrentMonthKey();
-  const usage = await context.env.DB.prepare(
-    `SELECT
-      usage_month as usageMonth,
-      plan_code as planCode,
-      quota_total as quotaTotal,
-      quota_used as quotaUsed,
-      quota_remaining as quotaRemaining,
-      reset_at as resetAt
-     FROM user_usage_monthly
-     WHERE user_id = ? AND usage_month = ?
-     LIMIT 1`
-  )
-    .bind(userId, usageMonth)
-    .first<{
-      usageMonth: string;
-      planCode: PlanCode;
-      quotaTotal: number;
-      quotaUsed: number;
-      quotaRemaining: number;
-      resetAt: string;
-    }>();
+  const usage = user.subscriptionStatus === "active"
+    ? await context.env.DB.prepare(
+        `SELECT
+          usage_month as usageMonth,
+          plan_code as planCode,
+          quota_total as quotaTotal,
+          quota_used as quotaUsed,
+          quota_remaining as quotaRemaining,
+          reset_at as resetAt
+         FROM user_usage_monthly
+         WHERE user_id = ? AND usage_month = ?
+         LIMIT 1`
+      )
+        .bind(userId, usageMonth)
+        .first<{
+          usageMonth: string;
+          planCode: PlanCode;
+          quotaTotal: number;
+          quotaUsed: number;
+          quotaRemaining: number;
+          resetAt: string;
+        }>()
+    : null;
 
   const orders = await listOrders(context, userId, 10);
 
@@ -356,16 +359,35 @@ export async function getSubscriptionCenter(context: AppContext, userId: string)
       expiresAt: user.planExpiresAt,
       autoRenew: Boolean(user.autoRenew),
     },
-    usage: usage
-      ? {
-          usageMonth: usage.usageMonth,
-          planCode: usage.planCode,
-          quotaTotal: usage.quotaTotal,
-          quotaUsed: usage.quotaUsed,
-          quotaRemaining: usage.quotaRemaining,
-          resetAt: usage.resetAt,
-        }
-      : null,
+    usage: user.subscriptionStatus === "active"
+      ? usage
+        ? {
+            usageMonth: usage.usageMonth,
+            planCode: usage.planCode,
+            quotaTotal: usage.quotaTotal,
+            quotaUsed: usage.quotaUsed,
+            quotaRemaining: usage.quotaRemaining,
+            resetAt: usage.resetAt,
+            mode: "subscription",
+          }
+        : {
+            usageMonth,
+            planCode: user.currentPlanCode,
+            quotaTotal: quota.limit,
+            quotaUsed: quota.used,
+            quotaRemaining: quota.remaining,
+            resetAt: null,
+            mode: "subscription",
+          }
+      : {
+          usageMonth,
+          planCode: null,
+          quotaTotal: quota.limit,
+          quotaUsed: quota.used,
+          quotaRemaining: quota.remaining,
+          resetAt: null,
+          mode: "free",
+        },
     plans: plans.map((plan) => ({
       ...plan,
       isCurrent: user.subscriptionStatus === "active" && plan.planCode === user.currentPlanCode,
