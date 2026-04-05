@@ -18,7 +18,7 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://image-background-remover.pages.dev"),
+  metadataBase: new URL("https://image.happylove.space"),
   title: "Image Background Remover",
   description:
     "Remove background from image online with a simple Next.js MVP powered by Remove.bg.",

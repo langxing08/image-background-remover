@@ -4,3 +4,12 @@ pages_build_output_dir = "out"
 
 [vars]
 NEXT_PUBLIC_API_URL = "/api"
+APP_BASE_URL = "https://image.happylove.space"
+GOOGLE_REDIRECT_URI = "https://image.happylove.space/api/auth/google/callback"
+FREE_DAILY_CREDITS = "3"
+PAYPAL_ENV = "sandbox"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "image-background-remover"
+database_id = "d3e108ec-03cb-40be-8ea5-592c9f9240d6"
