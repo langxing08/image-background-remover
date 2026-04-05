@@ -3,37 +3,6 @@
 import Image from "next/image";
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 
-declare global {
-  interface Window {
-    paypal?: {
-      Buttons: (options: {
-        style?: Record<string, string | number | boolean>;
-        createSubscription: (
-          _data: unknown,
-          actions: {
-            subscription: {
-              create: (input: {
-                plan_id: string;
-                custom_id?: string;
-                application_context?: {
-                  shipping_preference?: "NO_SHIPPING" | "GET_FROM_FILE" | "SET_PROVIDED_ADDRESS";
-                  user_action?: "CONTINUE" | "SUBSCRIBE_NOW";
-                  return_url?: string;
-                  cancel_url?: string;
-                };
-              }) => Promise<string>;
-            };
-          }
-        ) => Promise<string>;
-        onApprove: (data: { subscriptionID: string }) => Promise<void> | void;
-        onCancel?: () => void;
-        onError?: (error: unknown) => void;
-      }) => {
-        render: (selector: string | HTMLElement) => Promise<void>;
-      };
-    };
-  }
-}
 
 type RequestState = "idle" | "uploading" | "success" | "error";
 type AuthStatus = "loading" | "logged_out" | "logged_in";
@@ -102,11 +71,6 @@ type SubscriptionCenterResponse = {
   }[];
 };
 
-type PaypalConfigResponse = {
-  clientId: string;
-  env: "sandbox" | "live";
-};
-
 type PaypalCreateSubscriptionResponse = {
   subscriptionId: string;
   status: string;
@@ -152,34 +116,6 @@ function formatPlanName(planCode?: string) {
   }
 }
 
-async function loadPaypalSdk(config: PaypalConfigResponse) {
-  const sdkSrc = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&components=buttons&vault=true&intent=subscription&currency=USD`;
-  const existingScript = document.querySelector<HTMLScriptElement>("script[data-paypal-sdk='true']");
-
-  if (existingScript && existingScript.src !== sdkSrc) {
-    existingScript.remove();
-    delete window.paypal;
-  } else if (window.paypal) {
-    return;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const currentScript = document.querySelector<HTMLScriptElement>("script[data-paypal-sdk='true']");
-    if (currentScript) {
-      currentScript.addEventListener("load", () => resolve(), { once: true });
-      currentScript.addEventListener("error", () => reject(new Error("Failed to load PayPal SDK.")), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = sdkSrc;
-    script.async = true;
-    script.dataset.paypalSdk = "true";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load PayPal SDK."));
-    document.body.appendChild(script);
-  });
-}
 
 function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -349,146 +285,82 @@ function SubscriptionCenterCard({
   onRefresh: () => Promise<void>;
 }) {
   const [actionMessage, setActionMessage] = useState("");
-  const [paypalConfig, setPaypalConfig] = useState<PaypalConfigResponse | null>(null);
-  const [paypalReady, setPaypalReady] = useState(false);
+  const [subscribingPlan, setSubscribingPlan] = useState<PlanCode | null>(null);
+  const [pendingActivation, setPendingActivation] = useState<{ subscriptionId: string; planCode: PlanCode } | null>(null);
   const onRefreshRef = useRef(onRefresh);
 
   useEffect(() => {
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
 
+  // Detect PayPal redirect-back params on mount
   useEffect(() => {
-    if (authStatus !== "logged_in") {
-      setPaypalConfig(null);
-      setPaypalReady(false);
+    const params = new URLSearchParams(window.location.search);
+    const isReturn = params.get("paypal_return") === "1";
+    const isCancel = params.get("paypal_cancel") === "1";
+
+    if (isReturn || isCancel) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    if (isCancel) {
+      setActionMessage("已取消 PayPal 订阅。");
       return;
     }
 
-    let cancelled = false;
-
-    const setupPaypal = async () => {
-      try {
-        const configResponse = await fetch("/api/paypal/config", { cache: "no-store" });
-        const configPayload = (await configResponse.json().catch(() => null)) as PaypalConfigResponse | { error?: string } | null;
-        if (!configResponse.ok || !configPayload || !("clientId" in configPayload)) {
-          throw new Error((configPayload as { error?: string } | null)?.error || "Failed to load PayPal config.");
-        }
-
-        await loadPaypalSdk(configPayload);
-
-        if (cancelled) return;
-
-        setPaypalConfig(configPayload);
-        setPaypalReady(true);
-      } catch (error) {
-        if (!cancelled) {
-          setPaypalReady(false);
-          setActionMessage(error instanceof Error ? error.message : "Failed to load PayPal SDK.");
-        }
+    if (isReturn) {
+      const subscriptionId = params.get("subscription_id");
+      const planCode = params.get("planCode") as PlanCode | null;
+      if (subscriptionId && planCode) {
+        setPendingActivation({ subscriptionId, planCode });
+        setActionMessage("PayPal 已授权，正在激活订阅…");
       }
-    };
-
-    void setupPaypal();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authStatus]);
-
-  useEffect(() => {
-    if (!paypalReady || !window.paypal || !center?.plans?.length) {
-      return;
     }
+  }, []);
 
-    const paypal = window.paypal;
-    let cancelled = false;
+  // Activate subscription once auth is confirmed
+  useEffect(() => {
+    if (!pendingActivation || authStatus !== "logged_in") return;
 
-    const renderButtons = async () => {
-      for (const plan of center.plans) {
-        const container = document.getElementById(`paypal-button-${plan.planCode}`);
-        if (!container) {
-          continue;
-        }
+    const { subscriptionId, planCode } = pendingActivation;
+    setPendingActivation(null);
 
-        container.innerHTML = "";
-        if (plan.isCurrent) {
-          continue;
-        }
+    fetch("/api/paypal/activate-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscriptionId, planCode }),
+    })
+      .then((r) => r.json() as Promise<{ error?: string; orderNo?: string }>)
+      .then((payload) => {
+        if (payload.error) throw new Error(payload.error);
+        setActionMessage(`订阅已成功开通：${payload.orderNo ?? subscriptionId}`);
+        return onRefreshRef.current();
+      })
+      .catch((e: unknown) => {
+        setActionMessage(`激活失败：${e instanceof Error ? e.message : String(e)}`);
+      });
+  }, [pendingActivation, authStatus]);
 
-        await paypal.Buttons({
-          style: {
-            shape: "pill",
-            color: "gold",
-            label: "subscribe",
-            height: 42,
-          },
-          createSubscription: async (_data, _actions) => {
-            setActionMessage("正在创建订阅，请稍候…");
-            const resp = await fetch("/api/paypal/create-subscription", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ planCode: plan.planCode }),
-            });
-            const payload = (await resp.json().catch(() => null)) as PaypalCreateSubscriptionResponse | null;
-            if (!resp.ok || !payload?.subscriptionId) {
-              const msg = payload?.error ?? `Server error ${resp.status}`;
-              setActionMessage(`创建订阅失败：${msg}`);
-              throw new Error(msg);
-            }
-            setActionMessage("PayPal 窗口已打开，请在弹窗中完成订阅。");
-            return payload.subscriptionId;
-          },
-          onApprove: async (data) => {
-            const activateResponse = await fetch("/api/paypal/activate-subscription", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                planCode: plan.planCode,
-                subscriptionId: data.subscriptionID,
-              }),
-            });
-
-            const activatePayload = (await activateResponse.json().catch(() => null)) as { error?: string; orderNo?: string } | null;
-            if (!activateResponse.ok) {
-              throw new Error(activatePayload?.error || "Failed to activate subscription.");
-            }
-
-            setActionMessage(`PayPal 订阅已开通：${activatePayload?.orderNo ?? data.subscriptionID}`);
-            await onRefreshRef.current();
-          },
-          onCancel: () => {
-            setActionMessage(`已取消 ${plan.planName} 的 PayPal 订阅。`);
-          },
-          onError: (error) => {
-            console.error("[PayPal onError]", error);
-            const msg =
-              error instanceof Error
-                ? error.message
-                : typeof error === "string"
-                  ? error
-                  : JSON.stringify(error);
-            setActionMessage(`PayPal 错误：${msg}`);
-          },
-        }).render(container);
-
-        if (cancelled) {
-          break;
-        }
+  const handleSubscribe = async (planCode: PlanCode) => {
+    setSubscribingPlan(planCode);
+    setActionMessage("正在创建订阅，请稍候…");
+    try {
+      const resp = await fetch("/api/paypal/create-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planCode }),
+      });
+      const payload = (await resp.json().catch(() => null)) as PaypalCreateSubscriptionResponse | null;
+      if (!resp.ok || !payload?.approveUrl) {
+        throw new Error(payload?.error ?? `Server error ${resp.status}`);
       }
-    };
-
-    void renderButtons().catch((error) => {
-      if (!cancelled) {
-        setActionMessage(error instanceof Error ? error.message : "Failed to render PayPal button.");
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [center, paypalReady]);
+      setActionMessage("正在跳转至 PayPal，请完成订阅后返回…");
+      window.location.href = payload.approveUrl;
+    } catch (e: unknown) {
+      setActionMessage(`创建订阅失败：${e instanceof Error ? e.message : String(e)}`);
+      setSubscribingPlan(null);
+    }
+  };
 
   if (authStatus !== "logged_in") {
     return (
@@ -506,7 +378,6 @@ function SubscriptionCenterCard({
       <div className="border-b border-[rgba(223,191,255,0.4)] px-5 py-4">
         <h2 className="text-base font-semibold text-slate-900">个人中心</h2>
         <p className="mt-1 text-sm text-slate-600">当前套餐、月额度、切换订阅、支付记录。</p>
-        {paypalConfig ? <p className="mt-2 text-xs text-[#865f95]">PayPal 环境：{paypalConfig.env}</p> : null}
       </div>
 
       <div className="grid gap-4 p-4 lg:grid-cols-[1.2fr_1fr]">
@@ -562,13 +433,21 @@ function SubscriptionCenterCard({
                     </div>
                     <p className="mt-1 text-sm text-slate-600">${plan.priceMonth} / month · {plan.quotaMonth} credits</p>
                   </div>
-                  <div className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold ${
-                    plan.isCurrent ? "bg-slate-100 text-slate-400" : "bg-[#fff6d8] text-[#8a6a00]"
-                  }`}>
-                    {plan.isCurrent ? "当前套餐" : paypalReady ? "PayPal Sandbox" : "加载 PayPal..."}
-                  </div>
+                  {plan.isCurrent ? (
+                    <div className="inline-flex min-h-10 items-center rounded-full bg-slate-100 px-4 text-sm font-semibold text-slate-400">
+                      当前套餐
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={subscribingPlan === plan.planCode}
+                      onClick={() => void handleSubscribe(plan.planCode)}
+                      className="inline-flex min-h-10 items-center rounded-full bg-[#fff6d8] px-4 text-sm font-semibold text-[#8a6a00] transition hover:bg-[#ffeea0] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {subscribingPlan === plan.planCode ? "处理中…" : "用 PayPal 订阅"}
+                    </button>
+                  )}
                 </div>
-                <div id={`paypal-button-${plan.planCode}`} className="mt-3 min-h-[42px]" />
               </div>
             ))}
           </div>

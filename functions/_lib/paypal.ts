@@ -265,8 +265,8 @@ export async function createPaypalSubscription(
       application_context: {
         shipping_preference: "NO_SHIPPING",
         user_action: "SUBSCRIBE_NOW",
-        return_url: baseUrl,
-        cancel_url: baseUrl,
+        return_url: `${baseUrl}/?paypal_return=1&planCode=${input.planCode}`,
+        cancel_url: `${baseUrl}/?paypal_cancel=1`,
       },
     }),
   });
