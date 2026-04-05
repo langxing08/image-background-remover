@@ -48,6 +48,7 @@ npm run build
 - `PAYPAL_CLIENT_ID`
 - `PAYPAL_CLIENT_SECRET`
 - `PAYPAL_ENV`（sandbox / live）
+- `PAYPAL_WEBHOOK_ID`（可选但建议；用于校验 PayPal webhook 签名）
 
 其中生产环境建议：
 

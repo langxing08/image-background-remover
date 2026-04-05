@@ -314,3 +314,44 @@ export async function fetchPaypalSubscription(context: AppContext, subscriptionI
     };
   }>;
 }
+
+export async function verifyPaypalWebhookSignature(
+  context: AppContext,
+  input: {
+    body: unknown;
+    headers: Headers;
+  }
+) {
+  if (!context.env.PAYPAL_WEBHOOK_ID) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "PAYPAL_WEBHOOK_ID_NOT_CONFIGURED",
+    };
+  }
+
+  const accessToken = await getPaypalAccessToken(context);
+  const payload = await paypalRequest<{ verification_status?: string }>(
+    context,
+    accessToken,
+    "/v1/notifications/verify-webhook-signature",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        auth_algo: input.headers.get("paypal-auth-algo"),
+        cert_url: input.headers.get("paypal-cert-url"),
+        transmission_id: input.headers.get("paypal-transmission-id"),
+        transmission_sig: input.headers.get("paypal-transmission-sig"),
+        transmission_time: input.headers.get("paypal-transmission-time"),
+        webhook_id: context.env.PAYPAL_WEBHOOK_ID,
+        webhook_event: input.body,
+      }),
+    }
+  );
+
+  return {
+    ok: payload.verification_status === "SUCCESS",
+    skipped: false,
+    status: payload.verification_status ?? "UNKNOWN",
+  };
+}

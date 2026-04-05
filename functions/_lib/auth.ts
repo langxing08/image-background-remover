@@ -10,6 +10,7 @@ export interface Env {
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_ENV?: string;
+  PAYPAL_WEBHOOK_ID?: string;
   SESSION_COOKIE_NAME?: string;
   SESSION_MAX_AGE_SECONDS?: string;
   FREE_DAILY_CREDITS?: string;
