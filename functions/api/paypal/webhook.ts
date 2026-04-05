@@ -15,8 +15,6 @@ interface PaypalWebhookEvent {
 
 const ACTIVATION_EVENTS = new Set([
   "BILLING.SUBSCRIPTION.ACTIVATED",
-  "BILLING.SUBSCRIPTION.CREATED",
-  "PAYMENT.SALE.COMPLETED",
 ]);
 
 export async function onRequestGet(context: AppContext): Promise<Response> {
@@ -62,6 +60,10 @@ export async function onRequestPost(context: AppContext): Promise<Response> {
     const userId = subscription.custom_id;
     const subscriptionId = subscription.id;
     const paypalPlanId = subscription.plan_id;
+
+    if (subscription.status !== "ACTIVE") {
+      return json({ ok: true, ignored: true, reason: `Subscription status is ${subscription.status}, not ACTIVE`, verification });
+    }
 
     if (!userId || !subscriptionId || !paypalPlanId) {
       return json({ ok: true, ignored: true, reason: "Missing userId/subscriptionId/planId in PayPal subscription", verification });

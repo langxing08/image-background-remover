@@ -8,7 +8,7 @@ interface ActivateBody {
   planCode?: PlanCode;
 }
 
-const PAYPAL_ACCEPTED_STATUS = new Set(["ACTIVE", "APPROVAL_PENDING", "APPROVED"]);
+const PAYPAL_ACCEPTED_STATUS = new Set(["ACTIVE"]);
 
 export async function onRequestPost(context: AppContext): Promise<Response> {
   const auth = await requireSession(context);
